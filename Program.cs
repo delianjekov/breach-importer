@@ -100,8 +100,6 @@ namespace BreachImporter
         {
             command = command.Replace("\"", "\"\"");
 
-            File.WriteAllText("/mnt/d/log", @"-c """ + command + @"""");
-
             var proc = new Process
             {
                 StartInfo = new ProcessStartInfo
