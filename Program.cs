@@ -35,7 +35,7 @@ namespace BreachImporter
 
             app.OnExecute(() =>
             {
-                var nullOptions = app.Options.Where(o => !o.HasValue() && o.LongName != "password").ToList();
+                var nullOptions = app.Options.Where(o => !o.HasValue() && o.LongName != "password" && o.OptionType == CommandOptionType.SingleValue).ToList();
                 if (nullOptions.Any())
                 {
                     foreach (var item in nullOptions)
