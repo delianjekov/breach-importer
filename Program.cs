@@ -65,11 +65,12 @@ namespace BreachImporter
                         }
 
                         var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
+
                         query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
+                        query = query.Replace("\"", "\\\"");
 
                         var passwordString = mysqlPassword.HasValue() ? $"-p {mysqlPassword.Value()}" : string.Empty;
-                        var command =
-                            $"{query} | mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()}";
+                        var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"{query}\"";
                         ExecuteBashCommand(command);
                     }
                 }
@@ -87,7 +88,7 @@ namespace BreachImporter
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Unable to execute application: {0}", ex.Message);
+                Console.WriteLine("Unable to execute application: {0}", ex.StackTrace);
             }
         }
 
