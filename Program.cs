@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Microsoft.Extensions.CommandLineUtils;
 
 namespace BreachImporter
@@ -16,14 +17,6 @@ namespace BreachImporter
                 Name = "BreachImporter",
                 Description = "A dotnet core console application that reads multiple text files under a certain directory (from the breach compilation for example) and imports the emails and passwords int MySQL database. The contents of the files should be in the format USERNAME:PASSWORD, each individual pair on a new line."
             };
-            app.HelpOption("-?|-h|--help");
-
-            AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
-            {
-                var exception = (Exception) eventArgs.ExceptionObject;
-                Console.Write(exception.Message);
-                Environment.Exit(1);
-            };
 
             var breachCompilationDataPath = app.Option("-d|--path",
                 "The path to the data folder of the breach compilation", CommandOptionType.SingleValue);
@@ -36,9 +29,11 @@ namespace BreachImporter
             var mysqlPassword = app.Option("-p|--password",
                 "The MySql password to use for the import process", CommandOptionType.SingleValue);
 
-            app.OnExecute(() => {
+            app.HelpOption("-?|-h|--help");
+            app.VersionOption("-v|--version", () =>
+                $"Version {Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion}");
 
-                
+            app.OnExecute(() => {
                 if (app.Options.Any(o => !o.HasValue()))
                 {
                     app.ShowHint();
@@ -77,6 +72,19 @@ namespace BreachImporter
 
                 return 0;
             });
+
+            try
+            {
+                app.Execute(args);
+            }
+            catch (CommandParsingException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unable to execute application: {0}", ex.Message);
+            }
         }
 
         private static string Escape(string data)
