@@ -33,9 +33,13 @@ namespace BreachImporter
             app.VersionOption("-v|--version", () =>
                 $"Version {Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion}");
 
-            app.OnExecute(() => {
-                if (app.Options.Any(o => !o.HasValue()))
+            app.OnExecute(() =>
+            {
+                var nullOptions = app.Options.Where(o => !o.HasValue() && o.LongName != "password").ToList();
+                if (nullOptions.Any())
                 {
+                    foreach (var item in nullOptions)
+                        Console.WriteLine($"--{item.LongName} is mandatory");
                     app.ShowHint();
                 }
                 else
