@@ -65,12 +65,13 @@ namespace BreachImporter
                         }
 
                         var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
-
                         query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
-                        query = query.Replace("\"", "\\\"");
 
                         var passwordString = mysqlPassword.HasValue() ? $"-p {mysqlPassword.Value()}" : string.Empty;
                         var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"{query}\"";
+
+                        File.WriteAllText("/mnt/d/log", command);
+
                         ExecuteBashCommand(command);
                     }
                 }
@@ -94,7 +95,7 @@ namespace BreachImporter
 
         private static string Escape(string data)
         {
-            return data.Replace("'", "\'");
+            return data.Replace("'", "\\'");
         }
 
         private static string ExecuteBashCommand(string command)
