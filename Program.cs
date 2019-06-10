@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,6 +14,7 @@ namespace BreachImporter
             {
                 var exception = (Exception) eventArgs.ExceptionObject;
                 Console.Write(exception.Message);
+                Environment.Exit(1);
             };
 
             var breachCompilationDataPath = GetArgument("path", args);
@@ -94,7 +95,7 @@ namespace BreachImporter
                    $"{Environment.NewLine}     --database {Environment.NewLine}          The name of the MySql database to import to, e.g. --database=breach" +
                    $"{Environment.NewLine}     --table {Environment.NewLine}          The name of the MySql table to import data to (the table has to have two string columns named user and pass), e.g. --table=user" +
                    $"{Environment.NewLine}     --username {Environment.NewLine}          The MySql username to use for the import process, e.g. --username=breach" +
-                   $"{Environment.NewLine}     --password {Environment.NewLine}          The MySql Password to use for the import process, e.g. --password=secret";
+                   $"{Environment.NewLine}     --password {Environment.NewLine}          The MySql Password to use for the import process, e.g. --password=secret{Environment.NewLine}";
         }
     }
 }
