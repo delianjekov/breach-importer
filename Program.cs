@@ -36,33 +36,37 @@ namespace BreachImporter
             var mysqlPassword = app.Option("-p|--password",
                 "The MySql password to use for the import process", CommandOptionType.SingleValue);
 
-            var directory = new DirectoryInfo(breachCompilationDataPath.Value());
-            foreach (var fileInfo in directory.GetFiles("*"))
-            {
-                var records = new List<KeyValuePair<string, string>>();
-                using (var file = new StreamReader(fileInfo.FullName))
+            app.OnExecute(() => { 
+                var directory = new DirectoryInfo(breachCompilationDataPath.Value());
+                foreach (var fileInfo in directory.GetFiles("*"))
                 {
-                    string line;
-                    while ((line = file.ReadLine()) != null)
+                    var records = new List<KeyValuePair<string, string>>();
+                    using (var file = new StreamReader(fileInfo.FullName))
                     {
-                        var chunks = line.Split(new[] {":", ";"}, 2, StringSplitOptions.RemoveEmptyEntries);
-                        if (chunks.Length == 2)
+                        string line;
+                        while ((line = file.ReadLine()) != null)
                         {
-                            var user = Escape(chunks[0]);
-                            var pass = Escape(chunks[1]);
+                            var chunks = line.Split(new[] {":", ";"}, 2, StringSplitOptions.RemoveEmptyEntries);
+                            if (chunks.Length == 2)
+                            {
+                                var user = Escape(chunks[0]);
+                                var pass = Escape(chunks[1]);
 
-                            records.Add(new KeyValuePair<string, string>(user, pass));
+                                records.Add(new KeyValuePair<string, string>(user, pass));
+                            }
                         }
                     }
+
+                    var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
+                    query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
+
+                    var passwordString = mysqlPassword.HasValue() ?  $"-p {mysqlPassword.Value()}" : string.Empty;
+                    var command = $"{query} | mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()}";
+                    ExecuteBashCommand(command);
                 }
 
-                var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
-                query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
-
-                var passwordString = mysqlPassword.HasValue() ?  $"-p {mysqlPassword.Value()}" : string.Empty;
-                var command = $"{query} | mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()}";
-                ExecuteBashCommand(command);
-            }
+                return 0;
+            });
         }
 
         private static string Escape(string data)
