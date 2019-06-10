@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Microsoft.Extensions.CommandLineUtils;
 
 namespace BreachImporter
 {
@@ -10,6 +11,13 @@ namespace BreachImporter
     {
         static void Main(string[] args)
         {
+            var app = new CommandLineApplication
+            {
+                Name = "BreachImporter",
+                Description = "A dotnet core console application that reads multiple text files under a certain directory (from the breach compilation for example) and imports the emails and passwords int MySQL database. The contents of the files should be in the format USERNAME:PASSWORD, each individual pair on a new line."
+            };
+            app.HelpOption("-?|-h|--help");
+
             AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
             {
                 var exception = (Exception) eventArgs.ExceptionObject;
@@ -17,13 +25,18 @@ namespace BreachImporter
                 Environment.Exit(1);
             };
 
-            var breachCompilationDataPath = GetArgument("path", args);
-            var mysqlDatabase = GetArgument("database", args);
-            var mysqlTable = GetArgument("table", args);
-            var mysqlUsername = GetArgument("user", args);
-            var mysqlPassword = GetArgument("password", args, true);
+            var breachCompilationDataPath = app.Option("-d|--path",
+                "The path to the data folder of the breach compilation", CommandOptionType.SingleValue);
+            var mysqlDatabase = app.Option("-d|--database",
+                "The name of the MySql database to import to", CommandOptionType.SingleValue);
+            var mysqlTable = app.Option("-t|--table",
+                "The name of the MySql table to import data to (the table has to have two string columns named user and pass)", CommandOptionType.SingleValue);
+            var mysqlUsername = app.Option("-u|--username",
+                "The MySql username to use for the import process", CommandOptionType.SingleValue);
+            var mysqlPassword = app.Option("-p|--password",
+                "The MySql password to use for the import process", CommandOptionType.SingleValue);
 
-            var directory = new DirectoryInfo(breachCompilationDataPath);
+            var directory = new DirectoryInfo(breachCompilationDataPath.Value());
             foreach (var fileInfo in directory.GetFiles("*"))
             {
                 var records = new List<KeyValuePair<string, string>>();
@@ -43,11 +56,11 @@ namespace BreachImporter
                     }
                 }
 
-                var query = $"INSERT INTO {mysqlTable}(user, pass) VALUES ";
+                var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
                 query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
 
-                var passwordString = string.IsNullOrWhiteSpace(mysqlPassword) ? string.Empty : $"-p {mysqlPassword}";
-                var command = $"{query} | mysql -u {mysqlUsername} {passwordString} {mysqlDatabase}";
+                var passwordString = mysqlPassword.HasValue() ?  $"-p {mysqlPassword.Value()}" : string.Empty;
+                var command = $"{query} | mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()}";
                 ExecuteBashCommand(command);
             }
         }
@@ -77,25 +90,6 @@ namespace BreachImporter
             proc.WaitForExit();
 
             return proc.StandardOutput.ReadToEnd();
-        }
-
-        private static string GetArgument(string arg, string[] args, bool optional = false)
-        {
-            var item = args.FirstOrDefault(a => a.StartsWith($"--{arg}"));
-            if (item == null && !optional)
-                throw new ArgumentException($"Argument {arg} is obligatory.{Environment.NewLine}{Environment.NewLine}{GetSampleUsage()}");
-
-            return item?.Split("=", StringSplitOptions.RemoveEmptyEntries).Last();
-        }
-
-        private static string GetSampleUsage()
-        {
-            return $"Usage:{Environment.NewLine}     BreachImporter [OPTIONS]{Environment.NewLine}{Environment.NewLine}Options:" +
-                   $"{Environment.NewLine}     --path {Environment.NewLine}          The path to the data folder of the breach compilation, e.g. --path=/home/root/breachcompilation/data" +
-                   $"{Environment.NewLine}     --database {Environment.NewLine}          The name of the MySql database to import to, e.g. --database=breach" +
-                   $"{Environment.NewLine}     --table {Environment.NewLine}          The name of the MySql table to import data to (the table has to have two string columns named user and pass), e.g. --table=user" +
-                   $"{Environment.NewLine}     --username {Environment.NewLine}          The MySql username to use for the import process, e.g. --username=breach" +
-                   $"{Environment.NewLine}     --password {Environment.NewLine}          The MySql Password to use for the import process, e.g. --password=secret{Environment.NewLine}";
         }
     }
 }
