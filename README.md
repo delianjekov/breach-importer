@@ -33,5 +33,3 @@ To run it:
           chmod +x BreachImporter
      6) Run it:
           ./BreachImporter [OPTIONS]
-          
-     
