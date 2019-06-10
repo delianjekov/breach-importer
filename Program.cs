@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.CommandLineUtils;
 
 namespace BreachImporter
@@ -93,12 +94,35 @@ namespace BreachImporter
 
         private static string Escape(string data)
         {
-            return data.Replace("'", @"\'").Replace(@"""", @"\""");
+            return Regex.Replace(data, @"[\x00'""\b\n\r\t\cZ\\%_]",
+                delegate (Match match)
+                {
+                    string v = match.Value;
+                    switch (v)
+                    {
+                        case "\x00":            // ASCII NUL (0x00) character
+                            return "\\0";
+                        case "\b":              // BACKSPACE character
+                            return "\\b";
+                        case "\n":              // NEWLINE (linefeed) character
+                            return "\\n";
+                        case "\r":              // CARRIAGE RETURN character
+                            return "\\r";
+                        case "\t":              // TAB
+                            return "\\t";
+                        case "\u001A":          // Ctrl-Z
+                            return "\\Z";
+                        default:
+                            return "\\" + v;
+                    }
+                });
         }
 
         private static string ExecuteBashCommand(string command)
         {
             command = command.Replace("\"", "\"\"");
+
+            File.WriteAllText("/mnt/d/log", @"-c """ + command + @"""");
 
             var proc = new Process
             {
