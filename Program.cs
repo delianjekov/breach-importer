@@ -69,7 +69,7 @@ namespace BreachImporter
                         query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
 
                         var passwordString = mysqlPassword.HasValue() ? $"-p {mysqlPassword.Value()}" : string.Empty;
-                        var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"{query}\"";
+                        var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"\"{query}\"\"";
 
                         ExecuteBashCommand(command);
                     }
@@ -120,10 +120,6 @@ namespace BreachImporter
 
         private static string ExecuteBashCommand(string command)
         {
-            command = command.Replace("\"", "\"\"");
-
-            File.WriteAllText("/mnt/d/log", @"-c """ + command + @"""");
-
             var proc = new Process
             {
                 StartInfo = new ProcessStartInfo
