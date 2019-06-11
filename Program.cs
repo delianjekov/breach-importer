@@ -37,6 +37,8 @@ namespace BreachImporter
 
             app.OnExecute(() =>
             {
+                Console.Clear();
+
                 var nullOptions = app.Options.Where(o => !o.HasValue() && o.LongName != "password" && o.OptionType == CommandOptionType.SingleValue).ToList();
                 if (nullOptions.Any())
                 {
@@ -58,7 +60,7 @@ namespace BreachImporter
 
                         ExecuteBashCommand(command);
                         Console.SetCursorPosition(0, 1);
-                        Console.WriteLine(FormatNumber(counter += BatchSize));
+                        Console.WriteLine(FormatNumber(counter += item.Count));
                     }
                 }
 
@@ -101,13 +103,13 @@ namespace BreachImporter
             return num.ToString("#,0");
         }
 
-        private static string PrepareQueryForBatch(CommandOption mysqlTable, IEnumerable<KeyValuePair<string, string>> batch)
+        private static string PrepareQueryForBatch(CommandOption mysqlTable, IList<KeyValuePair<string, string>> batch)
         {
             var values = string.Join(",", batch.Select(r => $"('{r.Key}','{r.Value}')"));
             return $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES {values};";
         }
 
-        private static IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetBatches(DirectoryInfo directory)
+        private static IEnumerable<IList<KeyValuePair<string, string>>> GetBatches(DirectoryInfo directory)
         {
             var records = ReadAllFilesAndParse(directory);
 
