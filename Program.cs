@@ -49,15 +49,16 @@ namespace BreachImporter
                 {
                     var directory = new DirectoryInfo(breachCompilationDataPath.Value());
                     var batches = GetBatches(directory);
-                    long totalCount = 0;
+                    long counter = 0;
                     foreach (var item in batches)
                     {
                         var query = PrepareQueryForBatch(mysqlTable, item);
                         var passwordString = mysqlPassword.HasValue() ? $"-p {mysqlPassword.Value()}" : string.Empty;
                         var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"\"{query}\"\"";
 
-                        if (!string.IsNullOrWhiteSpace(ExecuteBashCommand(command)))
-                            Console.WriteLine(totalCount += BatchSize);
+                        ExecuteBashCommand(command);
+                        Console.SetCursorPosition(0, 1);
+                        Console.WriteLine(FormatCounter(counter += BatchSize));
                     }
                 }
 
@@ -78,10 +79,27 @@ namespace BreachImporter
             }
         }
 
+        private static string FormatCounter(long value)
+        {
+            if (value >= 100000000000)
+                return (value / 1000000000).ToString("#,0") + " B";
+            if (value >= 10000000000)
+                return (value / 1000000000D).ToString("0.#") + " B";
+            if (value >= 100000000)
+                return (value / 1000000).ToString("#,0") + " M";
+            if (value >= 10000000)
+                return (value / 1000000D).ToString("0.#") + " M";
+            if (value >= 100000)
+                return (value / 1000).ToString("#,0") + " K";
+            if (value >= 10000)
+                return (value / 1000D).ToString("0.#") + " K";
+            return value.ToString("#,0");
+        }
+
         private static string PrepareQueryForBatch(CommandOption mysqlTable, IEnumerable<KeyValuePair<string, string>> batch)
         {
-            var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
-            return query + string.Join(",", batch.Select(r => $"('{r.Key}','{r.Value}')"));
+            var values = string.Join(",", batch.Select(r => $"('{r.Key}','{r.Value}')"));
+            return $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES {values};";
         }
 
         private static IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetBatches(DirectoryInfo directory)
