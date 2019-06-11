@@ -11,7 +11,7 @@ namespace BreachImporter
 {
     class Program
     {
-        private const int BatchSize = 1000;
+        private const int BatchSize = 500;
         static void Main(string[] args)
         {
             var app = new CommandLineApplication
@@ -42,18 +42,22 @@ namespace BreachImporter
                 {
                     foreach (var item in nullOptions)
                         Console.WriteLine($"--{item.LongName} is mandatory");
+
                     app.ShowHint();
                 }
                 else
                 {
                     var directory = new DirectoryInfo(breachCompilationDataPath.Value());
                     var batches = GetBatches(directory);
+                    long totalCount = 0;
                     foreach (var item in batches)
                     {
                         var query = PrepareQueryForBatch(mysqlTable, item);
                         var passwordString = mysqlPassword.HasValue() ? $"-p {mysqlPassword.Value()}" : string.Empty;
                         var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"\"{query}\"\"";
-                        Console.WriteLine(ExecuteBashCommand(command));
+
+                        if (!string.IsNullOrWhiteSpace(ExecuteBashCommand(command)))
+                            Console.WriteLine(totalCount += BatchSize);
                     }
                 }
 
@@ -76,7 +80,7 @@ namespace BreachImporter
 
         private static string PrepareQueryForBatch(CommandOption mysqlTable, IEnumerable<KeyValuePair<string, string>> batch)
         {
-            var query = $"INSERT INTO {mysqlTable.Value()}(`user`, `pass`) VALUES ";
+            var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
             return query + string.Join(",", batch.Select(r => $"('{r.Key}','{r.Value}')"));
         }
 
@@ -174,9 +178,10 @@ namespace BreachImporter
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "/bin/bash",
-                    Arguments = @"-c """ + command + @"""",
+                    Arguments = "-c \"" + command + "\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     CreateNoWindow = true
                 }
             };
