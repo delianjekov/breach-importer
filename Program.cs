@@ -11,6 +11,7 @@ namespace BreachImporter
 {
     class Program
     {
+        private const int BatchSize = 1000;
         static void Main(string[] args)
         {
             var app = new CommandLineApplication
@@ -46,32 +47,13 @@ namespace BreachImporter
                 else
                 {
                     var directory = new DirectoryInfo(breachCompilationDataPath.Value());
-                    foreach (var fileInfo in directory.GetFiles("*"))
+                    var batches = GetBatches(directory);
+                    foreach (var item in batches)
                     {
-                        var records = new List<KeyValuePair<string, string>>();
-                        using (var file = new StreamReader(fileInfo.FullName))
-                        {
-                            string line;
-                            while ((line = file.ReadLine()) != null)
-                            {
-                                var chunks = line.Split(new[] {":", ";"}, 2, StringSplitOptions.RemoveEmptyEntries);
-                                if (chunks.Length == 2)
-                                {
-                                    var user = Escape(chunks[0]);
-                                    var pass = Escape(chunks[1]);
-
-                                    records.Add(new KeyValuePair<string, string>(user, pass));
-                                }
-                            }
-                        }
-
-                        var query = $"INSERT INTO {mysqlTable.Value()}(user, pass) VALUES ";
-                        query += string.Join(",", records.Select(r => $"('{r.Key}','{r.Value}')"));
-
+                        var query = PrepareQueryForBatch(mysqlTable, item);
                         var passwordString = mysqlPassword.HasValue() ? $"-p {mysqlPassword.Value()}" : string.Empty;
                         var command = $"mysql -u {mysqlUsername.Value()} {passwordString} {mysqlDatabase.Value()} -e \"\"{query}\"\"";
-
-                        ExecuteBashCommand(command);
+                        Console.WriteLine(ExecuteBashCommand(command));
                     }
                 }
 
@@ -89,6 +71,73 @@ namespace BreachImporter
             catch (Exception ex)
             {
                 Console.WriteLine("Unable to execute application: {0}", ex.StackTrace);
+            }
+        }
+
+        private static string PrepareQueryForBatch(CommandOption mysqlTable, IEnumerable<KeyValuePair<string, string>> batch)
+        {
+            var query = $"INSERT INTO {mysqlTable.Value()}(`user`, `pass`) VALUES ";
+            return query + string.Join(",", batch.Select(r => $"('{r.Key}','{r.Value}')"));
+        }
+
+        private static IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetBatches(DirectoryInfo directory)
+        {
+            var records = ReadAllFilesAndParse(directory);
+
+            using (var enumerator = records.GetEnumerator())
+            {
+                var batch = new List<KeyValuePair<string, string>>();
+                while (enumerator.MoveNext())
+                {
+                    var item = enumerator.Current;
+                    batch.Add(item);
+
+                    if (batch.Count == BatchSize)
+                    {
+                        yield return batch;
+                        batch = new List<KeyValuePair<string, string>>();
+                    }
+                }
+
+                yield return batch;
+            }
+        }
+
+        private static IEnumerable<KeyValuePair<string, string>> ReadAllFilesAndParse(DirectoryInfo directory)
+        {
+            foreach (var fileInfo in directory.GetFiles("*", SearchOption.AllDirectories))
+            {
+                using (var file = new StreamReader(fileInfo.FullName))
+                {
+                    string line;
+                    while ((line = file.ReadLine()) != null)
+                    {
+                        var chunks = line.Split(new[] { ":", ";", "|" }, 2, StringSplitOptions.RemoveEmptyEntries);
+                        if (chunks.Length == 2)
+                        {
+                            var user = Escape(chunks[0]);
+                            var pass = Escape(chunks[1]);
+
+                            if (IsValidEmail(user))
+                            {
+                                yield return new KeyValuePair<string, string>(user, pass);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool IsValidEmail(string email)
+        {
+            try
+            {
+                var address = new System.Net.Mail.MailAddress(email);
+                return address.Address == email && Regex.IsMatch(email, @"\A(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\Z", RegexOptions.IgnoreCase);
+            }
+            catch
+            {
+                return false;
             }
         }
 
