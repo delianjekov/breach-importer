@@ -58,7 +58,7 @@ namespace BreachImporter
 
                         ExecuteBashCommand(command);
                         Console.SetCursorPosition(0, 1);
-                        Console.WriteLine(FormatCounter(counter += BatchSize));
+                        Console.WriteLine(FormatNumber(counter += BatchSize));
                     }
                 }
 
@@ -79,21 +79,26 @@ namespace BreachImporter
             }
         }
 
-        private static string FormatCounter(long value)
+        static string FormatNumber(long num)
         {
-            if (value >= 100000000000)
-                return (value / 1000000000).ToString("#,0") + " B";
-            if (value >= 10000000000)
-                return (value / 1000000000D).ToString("0.#") + " B";
-            if (value >= 100000000)
-                return (value / 1000000).ToString("#,0") + " M";
-            if (value >= 10000000)
-                return (value / 1000000D).ToString("0.#") + " M";
-            if (value >= 100000)
-                return (value / 1000).ToString("#,0") + " K";
-            if (value >= 10000)
-                return (value / 1000D).ToString("0.#") + " K";
-            return value.ToString("#,0");
+            if (num >= 100000000)
+            {
+                return (num / 1000000D).ToString("0.#M");
+            }
+            if (num >= 1000000)
+            {
+                return (num / 1000000D).ToString("0.##M");
+            }
+            if (num >= 100000)
+            {
+                return (num / 1000D).ToString("0.#k");
+            }
+            if (num >= 10000)
+            {
+                return (num / 1000D).ToString("0.##k");
+            }
+
+            return num.ToString("#,0");
         }
 
         private static string PrepareQueryForBatch(CommandOption mysqlTable, IEnumerable<KeyValuePair<string, string>> batch)
